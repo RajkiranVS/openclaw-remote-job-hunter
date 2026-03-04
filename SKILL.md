@@ -87,3 +87,10 @@ pymupdf>=1.23.0
 
 **Rajkiran Veldur** — AI/ML Solutions Architect  
 [github.com/RajkiranVS/openclaw-remote-job-hunter](https://github.com/RajkiranVS/openclaw-remote-job-hunter)
+
+## Security Notes
+
+- **No credentials stored** — profile.template.json contains no passwords; credentials are managed by OpenClaw auth system
+- **Network requests** — src/search.py makes outbound requests only to public job board APIs (Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas)
+- **Report sanitization** — daily_report.md contains only job titles, companies, URLs, and scores extracted from public listings
+- **No data exfiltration** — all data is written locally; WhatsApp delivery is handled by the OpenClaw agent, not this skill

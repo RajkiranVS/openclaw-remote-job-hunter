@@ -25,18 +25,8 @@
   "max_daily_applications": 15,
   "whatsapp_delivery": "+1234567890",
   "credentials": {
-    "linkedin": {
-      "email": "",
-      "password": ""
-    },
-    "indeed": {
-      "email": "",
-      "password": ""
-    },
-    "wellfound": {
-      "email": "",
-      "password": ""
-    }
+    "_note": "Credentials are stored separately in OpenClaw auth-profiles.json \u2014 never store passwords in this file",
+    "_docs": "See https://github.com/RajkiranVS/openclaw-remote-job-hunter#security"
   },
   "_resume_note": "resume_path supports .docx (Word) and .pdf formats"
 }

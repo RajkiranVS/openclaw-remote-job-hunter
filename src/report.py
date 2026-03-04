@@ -1,8 +1,19 @@
+
+def sanitize(text):
+    """Strip any content that could be used for prompt injection."""
+    import re
+    if not text:
+        return text
+    # Remove anything that looks like an instruction or command
+    text = re.sub(r'(?i)(ignore previous|disregard|new instruction|system prompt|forget|override)', '[removed]', text)
+    return text[:500]  # Cap field lengths
+
 #!/usr/bin/env python3
 """
 report.py — Generates daily_report.md from scored jobs + gap analysis.
 """
 import datetime
+import re
 
 def generate_report(jobs, gap_analysis, profile_config, profile_meta, output_path):
     today = datetime.date.today().strftime("%a, %b %d %Y")
@@ -63,7 +74,7 @@ def generate_report(jobs, gap_analysis, profile_config, profile_meta, output_pat
             score_emoji = "🔴"
             score_str = f"{score}%"
 
-        lines.append(f"## {i}. {job['title']} — {job['company']}")
+        lines.append(f"## {i}. {sanitize(job['title'])} — {sanitize(job['company'])}") 
         lines.append(f"- **Match Score:** {score_emoji} {score_str}")
         lines.append(f"- **Source:** {job['source']}")
         lines.append(f"- **Salary:** {job['salary']}")
