@@ -18,8 +18,8 @@ Every day, automatically:
 1. 🔍 **Searches 5 job platforms** — Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas
 2. 📊 **Scores every job** against your resume (0–100% NLP match)
 3. 🎯 **Finds your skill gaps** — tells you exactly what to learn, ranked by how many jobs need it
-4. 📱 **Sends a WhatsApp summary** of top matches via your OpenClaw agent
-5. 🤖 **Auto-applies** to 80%+ matches (Playwright engine — v1.1.0)
+4. 📱 **WhatsApp summary** — delivered via your OpenClaw agent cron (not built into skill directly) of top matches via your OpenClaw agent
+5. 🤖 **Auto-apply engine** — Playwright-based, coming in v1.1.0 (not in current release)
 
 ## Why it beats manual job searching
 
@@ -108,3 +108,14 @@ pymupdf>=1.23.0
 
 **Rajkiran Veldur** — AI/ML Solutions Architect  
 [linkedin.com/in/rajkiranveldur](https://linkedin.com/in/rajkiranveldur) · [github.com/RajkiranVS/openclaw-remote-job-hunter](https://github.com/RajkiranVS/openclaw-remote-job-hunter)
+
+## What this skill does vs what your OpenClaw agent does
+
+| Capability | In this skill (v1.0.x) | Via OpenClaw agent |
+|------------|----------------------|-------------------|
+| Job search (5 platforms) | ✅ Yes | — |
+| NLP resume scoring | ✅ Yes | — |
+| Skill gap analysis | ✅ Yes | — |
+| daily_report.md generation | ✅ Yes | — |
+| WhatsApp delivery | ❌ Not in skill | ✅ Agent reads report + sends WhatsApp |
+| Auto-apply (Playwright) | ❌ Coming v1.1.0 | — |

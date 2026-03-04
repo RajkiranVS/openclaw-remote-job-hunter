@@ -19,7 +19,7 @@ Every day, automatically:
 2. 📊 **Scores every job** against your resume (0–100% NLP match)
 3. 🎯 **Finds your skill gaps** — tells you exactly what to learn, ranked by how many jobs need it
 4. 📱 **Sends a WhatsApp summary** of top matches via your OpenClaw agent
-5. 🤖 **Auto-applies** to 80%+ matches (Playwright engine — v1.1.0)
+5. 🤖 **Auto-apply engine** — coming in v1.1.0 (not in current release)
 
 ## Why it beats manual job searching
 
