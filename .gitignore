@@ -1,0 +1,18 @@
+# User profiles (contain personal info + credentials)
+**/my-profile.json
+**/rajkiran-profile.json
+**/neha-profile.json
+
+# Reports
+daily_report.md
+application_results.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Playwright
+playwright-report/
+test-results/

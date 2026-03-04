@@ -1,0 +1,9 @@
+{
+  "name": "remote-job-hunter",
+  "version": "1.0.0",
+  "description": "AI-powered remote job search, NLP match scoring, skill gap analysis, and auto-apply for OpenClaw agents. 5-platform aggregation. Zero hardcoding.",
+  "author": "rajkiranveldur",
+  "keywords": ["jobs", "remote", "job-search", "career", "skill-gap", "auto-apply"],
+  "requires": ["playwright", "python-docx"],
+  "entry": "src/main.py"
+}
