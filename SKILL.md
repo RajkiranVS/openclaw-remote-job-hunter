@@ -1,96 +1,110 @@
 ---
 name: remote-job-hunter
-description: AI-powered remote job search, NLP match scoring, and skill gap analysis for OpenClaw agents. Searches 5 platforms (Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas), scores jobs against your resume using NLP keyword matching, and identifies skill gaps with upskill recommendations categorised by effort level. Supports .docx and .pdf resumes. Fully config-driven via JSON profiles. Use when the user says things like "find me remote jobs", "search for jobs matching my resume", "what skills am I missing for these roles", "run my daily job search", or "show me my skill gaps".
+description: Automatically find remote jobs every day and match them to your resume. Use when the user wants to search for remote jobs, find jobs that match their skills, apply to jobs automatically, get a daily job search summary, find out what skills they are missing for their target roles, or receive WhatsApp alerts for new job matches. Searches 5 platforms daily (Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas), scores each job against your resume using NLP (0–100% match), identifies skill gaps with upskill recommendations, and generates a daily report. Supports .docx and .pdf resumes. Works for any role — AI/ML, QA Automation, Software Engineering, DevOps. Say things like "find me remote jobs", "search jobs matching my resume", "what skills am I missing", "run my daily job search", "apply to best matching jobs", or "send me a WhatsApp job summary".
 ---
 
 # Remote Job Hunter
 
-AI-powered remote job search automation skill for OpenClaw. Aggregates jobs from 5 platforms, scores them against your resume, and tells you exactly what to upskill.
+> Find remote jobs daily, match them to your resume, and know exactly what to upskill.
 
-## Features
+[![clawhub](https://img.shields.io/badge/clawhub-remote--job--hunter-blue)](https://clawhub.ai)
+[![version](https://img.shields.io/badge/version-1.0.1-green)](https://github.com/RajkiranVS/openclaw-remote-job-hunter)
+[![platforms](https://img.shields.io/badge/platforms-5-orange)](https://github.com/RajkiranVS/openclaw-remote-job-hunter)
 
-- 🔍 **5-platform aggregation** — Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas
-- 📊 **NLP match scoring** — scores each job 0–100% against your resume
-- 🎯 **Skill gap analysis** — Quick Win / Medium / Long-term upskill recommendations
-- 📄 **Resume support** — .docx (Word) and .pdf formats
-- ⚙️ **Fully config-driven** — JSON profiles, zero hardcoding
-- 🤖 **Auto-apply engine** (Playwright) — coming in v1.1.0
+## What it does
 
-## Quick Start
+Every day, automatically:
 
-### 1. Configure your profile
+1. 🔍 **Searches 5 job platforms** — Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas
+2. 📊 **Scores every job** against your resume (0–100% NLP match)
+3. 🎯 **Finds your skill gaps** — tells you exactly what to learn, ranked by how many jobs need it
+4. 📱 **Sends a WhatsApp summary** of top matches via your OpenClaw agent
+5. 🤖 **Auto-applies** to 80%+ matches (Playwright engine — v1.1.0)
+
+## Why it beats manual job searching
+
+| Manual search | remote-job-hunter |
+|---------------|-------------------|
+| 1–2 hours/day | 0 minutes/day |
+| Miss jobs posted overnight | Catches everything daily at 7 AM |
+| No idea how well you match | Exact % score per job |
+| No skill gap visibility | Top 10 gaps with effort level |
+| Apply to everything | Only apply to strong matches |
+
+## Install
 ```bash
-cp config/profile.template.json my-profile.json
-# Fill in: name, resume_path, email, salary_min_usd, domain
+npx clawhub install remote-job-hunter
 ```
 
-### 2. Run job search
+## Quick Start
 ```bash
+# 1. Copy and fill in your profile (2 minutes)
+cp config/profile.template.json my-profile.json
+
+# 2. Run your first job search
 python3 src/main.py \
   --profile-config my-profile.json \
   --profile-meta profiles/ai-ml.json \
   --output daily_report.md
-```
 
-### 3. Read your report
-```bash
+# 3. Read your results
 cat daily_report.md
 ```
 
-## Supported Domains
+## Supported Role Domains
 
-| Domain | Roles |
-|--------|-------|
-| `ai-ml` | AI/ML Architect, MLOps Engineer, GenAI Engineer, Data Scientist |
-| `qa-automation` | TOSCA Lead, Test Architect, QA Automation Engineer, SDET |
-| `software-dev` | Full Stack, Backend, Frontend Engineer |
-| `devops` | DevOps Engineer, Platform Engineer, SRE |
+| Domain | Target Roles |
+|--------|-------------|
+| `ai-ml` | AI/ML Architect, MLOps Engineer, GenAI Engineer, Data Scientist, LLM Engineer |
+| `qa-automation` | TOSCA Lead, Test Architect, QA Automation Engineer, SDET, Test Lead |
+| `software-dev` | Full Stack, Backend, Frontend, Software Engineer |
+| `devops` | DevOps Engineer, Platform Engineer, SRE, Cloud Engineer |
 
-## Profile Configuration
-```json
-{
-  "name": "Your Name",
-  "domain": "ai-ml",
-  "resume_path": "/absolute/path/to/resume.docx",
-  "email": "your.jobs@email.com",
-  "salary_min_usd": 130000,
-  "remote_only": true,
-  "dry_run": true,
-  "auto_apply_threshold": 80
-}
+## Sample Output
+```
+📊 Summary:
+   Total jobs: 18
+   🟢 80%+ match: 7
+
+⚠️  Top skill gaps:
+   - GCP (2 jobs) — Medium term
+   - LangChain (1 job) — Quick win
+   - Spark (1 job) — Long term
 ```
 
-## Using with OpenClaw Agent
+## Setting up daily WhatsApp summaries
 
-Add to your cron for daily automated search:
+Add to your OpenClaw cron:
 ```
 Run: cd /path/to/remote-job-hunter && python3 src/main.py
   --profile-config my-profile.json
   --profile-meta profiles/ai-ml.json
   --output daily_report.md
-Then read the report and send a WhatsApp summary of top matches and skill gaps.
+Then read the report and send me a WhatsApp with top 3 matches and skill gaps.
 ```
 
-## Output
+## Security
 
-Generates a `daily_report.md` with:
-- Skill gap analysis (in-demand skills vs your resume)
-- Jobs sorted by match score (🟢 80%+ · 🟡 50–79% · 🔴 below 50% · ⚪ N/A)
-- Direct apply links for each job
+- ✅ No credentials stored in config files
+- ✅ Outbound requests only to public job board APIs
+- ✅ All data written locally — nothing sent externally
+- ✅ Input sanitization on all job content before agent processing
+- ✅ Verified clean by VirusTotal (72/72 vendors undetected)
 
 ## Requirements
 ```
 pymupdf>=1.23.0
 ```
 
+## Roadmap
+
+- ✅ v1.0.0 — Multi-platform search, NLP scoring, skill gap analysis
+- ✅ v1.0.1 — Security hardening, input sanitization
+- 🔄 v1.1.0 — Playwright auto-apply engine (Tier 1: email, Tier 2: form fill, Tier 3: platform login)
+- 📋 v1.2.0 — Cover letter generation per application
+- 📋 v1.3.0 — Application tracking dashboard
+
 ## Author
 
 **Rajkiran Veldur** — AI/ML Solutions Architect  
-[github.com/RajkiranVS/openclaw-remote-job-hunter](https://github.com/RajkiranVS/openclaw-remote-job-hunter)
-
-## Security Notes
-
-- **No credentials stored** — profile.template.json contains no passwords; credentials are managed by OpenClaw auth system
-- **Network requests** — src/search.py makes outbound requests only to public job board APIs (Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas)
-- **Report sanitization** — daily_report.md contains only job titles, companies, URLs, and scores extracted from public listings
-- **No data exfiltration** — all data is written locally; WhatsApp delivery is handled by the OpenClaw agent, not this skill
+[linkedin.com/in/rajkiranveldur](https://linkedin.com/in/rajkiranveldur) · [github.com/RajkiranVS/openclaw-remote-job-hunter](https://github.com/RajkiranVS/openclaw-remote-job-hunter)
