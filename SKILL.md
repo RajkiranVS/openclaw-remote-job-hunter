@@ -1,28 +1,30 @@
 ---
 name: remote-job-hunter
-description: >
-  AI-powered remote job search, match scoring, skill gap analysis, and auto-apply
-  for OpenClaw agents. Searches 5 platforms (Remotive, RemoteOK, Jobicy,
-  WeWorkRemotely, Himalayas), scores jobs against your resume using NLP,
-  identifies skill gaps with upskill recommendations, and generates a daily
-  WhatsApp-ready report. Use when the user says things like "find me remote jobs",
-  "search for jobs matching my resume", "what skills am I missing", or
-  "apply to best matching remote jobs".
+description: AI-powered remote job search, NLP match scoring, and skill gap analysis for OpenClaw agents. Searches 5 platforms (Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas), scores jobs against your resume using NLP keyword matching, and identifies skill gaps with upskill recommendations categorised by effort level. Supports .docx and .pdf resumes. Fully config-driven via JSON profiles. Use when the user says things like "find me remote jobs", "search for jobs matching my resume", "what skills am I missing for these roles", "run my daily job search", or "show me my skill gaps".
 ---
 
-# remote-job-hunter
+# Remote Job Hunter
 
-AI-powered remote job search automation for OpenClaw.
+AI-powered remote job search automation skill for OpenClaw. Aggregates jobs from 5 platforms, scores them against your resume, and tells you exactly what to upskill.
+
+## Features
+
+- 🔍 **5-platform aggregation** — Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas
+- 📊 **NLP match scoring** — scores each job 0–100% against your resume
+- 🎯 **Skill gap analysis** — Quick Win / Medium / Long-term upskill recommendations
+- 📄 **Resume support** — .docx (Word) and .pdf formats
+- ⚙️ **Fully config-driven** — JSON profiles, zero hardcoding
+- 🤖 **Auto-apply engine** (Playwright) — coming in v1.1.0
 
 ## Quick Start
 
-1. Copy and fill in your profile:
+### 1. Configure your profile
 ```bash
 cp config/profile.template.json my-profile.json
-# Edit my-profile.json with your details
+# Fill in: name, resume_path, email, salary_min_usd, domain
 ```
 
-2. Run job search:
+### 2. Run job search
 ```bash
 python3 src/main.py \
   --profile-config my-profile.json \
@@ -30,16 +32,58 @@ python3 src/main.py \
   --output daily_report.md
 ```
 
-## Supported Domains
-- `ai-ml` — AI/ML Architect, MLOps, GenAI Engineer
-- `qa-automation` — TOSCA, Selenium, QA Lead, Test Architect
-- `software-dev` — Full Stack, Backend, Frontend
-- `devops` — DevOps, Platform Engineering, SRE
+### 3. Read your report
+```bash
+cat daily_report.md
+```
 
-## Features
-- 5-platform job aggregation (no API keys required)
-- Resume-aware NLP match scoring (0–100%)
-- Skill gap analysis with Quick Win / Medium / Long-term categorisation
-- Daily report in markdown — ready for WhatsApp delivery via OpenClaw agent
-- Fully config-driven — zero hardcoding
-- Auto-apply engine (Playwright) — coming in v1.1.0
+## Supported Domains
+
+| Domain | Roles |
+|--------|-------|
+| `ai-ml` | AI/ML Architect, MLOps Engineer, GenAI Engineer, Data Scientist |
+| `qa-automation` | TOSCA Lead, Test Architect, QA Automation Engineer, SDET |
+| `software-dev` | Full Stack, Backend, Frontend Engineer |
+| `devops` | DevOps Engineer, Platform Engineer, SRE |
+
+## Profile Configuration
+```json
+{
+  "name": "Your Name",
+  "domain": "ai-ml",
+  "resume_path": "/absolute/path/to/resume.docx",
+  "email": "your.jobs@email.com",
+  "salary_min_usd": 130000,
+  "remote_only": true,
+  "dry_run": true,
+  "auto_apply_threshold": 80
+}
+```
+
+## Using with OpenClaw Agent
+
+Add to your cron for daily automated search:
+```
+Run: cd /path/to/remote-job-hunter && python3 src/main.py
+  --profile-config my-profile.json
+  --profile-meta profiles/ai-ml.json
+  --output daily_report.md
+Then read the report and send a WhatsApp summary of top matches and skill gaps.
+```
+
+## Output
+
+Generates a `daily_report.md` with:
+- Skill gap analysis (in-demand skills vs your resume)
+- Jobs sorted by match score (🟢 80%+ · 🟡 50–79% · 🔴 below 50% · ⚪ N/A)
+- Direct apply links for each job
+
+## Requirements
+```
+pymupdf>=1.23.0
+```
+
+## Author
+
+**Rajkiran Veldur** — AI/ML Solutions Architect  
+[github.com/RajkiranVS/openclaw-remote-job-hunter](https://github.com/RajkiranVS/openclaw-remote-job-hunter)
