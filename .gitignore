@@ -16,3 +16,9 @@ __pycache__/
 # Playwright
 playwright-report/
 test-results/
+pending_applications.json
+applied_jobs.json
+whatsapp_applied_message.txt
+whatsapp_preview_message.txt
+applied_report.md
+*-profile.json
