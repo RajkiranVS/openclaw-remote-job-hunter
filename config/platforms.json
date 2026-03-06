@@ -23,7 +23,11 @@
     "tag_map": {
       "ai-ml": [
         "machine-learning",
-        "ai"
+        "ai",
+        "data-science",
+        "nlp",
+        "deep-learning",
+        "llm"
       ],
       "qa-automation": [
         "qa",
@@ -67,7 +71,37 @@
     "enabled": true,
     "type": "api",
     "base_url": "https://himalayas.app/jobs/api",
-    "note": "API ignores q param \u2014 client-side title filtering only",
-    "filter_mode": "client-side-title"
+    "note": "API ignores q param \u2014 client-side title filtering only. Paginated via offset.",
+    "filter_mode": "client-side-title",
+    "pages": 10
+  },
+  "realworkfromanywhere": {
+    "enabled": true,
+    "base_url": "https://www.realworkfromanywhere.com/rss",
+    "note": "Hand-curated WFA-only board. Every listing guarantees no location restriction."
+  },
+  "workingnomads": {
+    "enabled": true,
+    "feeds": {
+      "ai-ml": [
+        "https://www.workingnomads.com/jobs?category=development&format=rss",
+        "https://www.workingnomads.com/jobs?category=data-science&format=rss"
+      ],
+      "qa-automation": [
+        "https://www.workingnomads.com/jobs?category=testing&format=rss",
+        "https://www.workingnomads.com/jobs?category=system-admin&format=rss"
+      ]
+    },
+    "note": "Global remote job board with category RSS feeds. No location restrictions."
+  },
+  "remoteai": {
+    "enabled": true,
+    "base_url": "https://remoteai.io/rss",
+    "note": "Dedicated AI/ML remote job board. All listings are AI/ML roles. Rajkiran only."
+  },
+  "remote100k": {
+    "enabled": true,
+    "base_url": "https://remote100k.com/rss",
+    "note": "Manually vetted $100K+ remote roles only. High signal, low noise."
   }
 }
