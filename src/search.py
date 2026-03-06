@@ -275,60 +275,15 @@ def fetch_himalayas(config, phrases):
 
 # ── v1.3.0: New platform fetchers ─────────────────────────────────────────────
 
-def fetch_realworkfromanywhere(config, phrases):
+def fetch_realworkfromanywhere(config, domain, phrases):
     """
     realworkfromanywhere.com — hand-curated, every listing verified WFA.
-    No location filtering needed — board guarantees global hiring.
-    """
-    import re
-    url = config.get("base_url", "https://www.realworkfromanywhere.com/rss")
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            content = r.read().decode("utf-8", errors="replace")
-        root = ET.fromstring(content)
-        items = root.findall(".//item")
-        results = []
-        for item in items:
-            title_el   = item.find("title")
-            link_el    = item.find("link")
-            desc_el    = item.find("description")
-            pubdate_el = item.find("pubDate")
-            if title_el is None:
-                continue
-            title    = html.unescape(safe_str(title_el.text, ""))
-            desc_raw = safe_str(desc_el.text if desc_el is not None else "")
-            desc     = re.sub(r'<[^>]+>', ' ', desc_raw)
-            if not any(p in (title + " " + desc).lower() for p in phrases):
-                continue
-            company_match = re.search(r'(?:at|@)\s+([A-Z][^\n<,]{2,40})', desc_raw)
-            company = company_match.group(1).strip() if company_match else "See listing"
-            results.append({
-                "title":       title,
-                "company":     company,
-                "salary":      "Not listed",
-                "url":         safe_str(link_el.text if link_el is not None else ""),
-                "location":    "Worldwide",
-                "posted":      safe_str(pubdate_el.text if pubdate_el is not None else "")[:16],
-                "tags":        "",
-                "description": desc,
-                "source":      "RealWFA"
-            })
-        print(f"  RealWFA: {len(results)} matches from {len(items)} items")
-        return results
-    except Exception as e:
-        print(f"  RealWFA error: {e}")
-        return []
-
-
-def fetch_workingnomads(config, domain, phrases):
-    """
-    workingnomads.com — curated global remote jobs, RSS per category.
-    Feeds defined per domain in platforms.json.
+    Uses category-specific RSS feeds (rss.xml).
     """
     import re
     feeds = config.get("feeds", {}).get(domain, [])
     results = []
+    seen_urls = set()
     for feed_url in feeds:
         try:
             req = urllib.request.Request(feed_url, headers={"User-Agent": "Mozilla/5.0"})
@@ -345,10 +300,13 @@ def fetch_workingnomads(config, domain, phrases):
                 if title_el is None:
                     continue
                 title    = html.unescape(safe_str(title_el.text, ""))
+                link     = safe_str(link_el.text if link_el is not None else "")
+                if link in seen_urls:
+                    continue
+                seen_urls.add(link)
                 desc_raw = safe_str(desc_el.text if desc_el is not None else "")
                 desc     = re.sub(r'<[^>]+>', ' ', desc_raw)
-                if not any(p in (title + " " + desc).lower() for p in phrases):
-                    continue
+                # Extract company from "Title at Company" pattern in title
                 company = "See listing"
                 if " at " in title:
                     parts = title.rsplit(" at ", 1)
@@ -358,19 +316,63 @@ def fetch_workingnomads(config, domain, phrases):
                     "title":       html.unescape(title),
                     "company":     html.unescape(company),
                     "salary":      "Not listed",
-                    "url":         safe_str(link_el.text if link_el is not None else ""),
-                    "location":    "Worldwide",
+                    "url":         link,
+                    "location":    "Worldwide (WFA)",
                     "posted":      safe_str(pubdate_el.text if pubdate_el is not None else "")[:16],
                     "tags":        "",
                     "description": desc,
-                    "source":      "WorkingNomads"
+                    "source":      "RealWFA"
                 })
                 matched += 1
-            feed_name = feed_url.split("category=")[-1].split("&")[0]
-            print(f"  WorkingNomads [{feed_name}]: {matched} matches from {len(items)} items")
+            feed_name = feed_url.split("/")[-2]
+            print(f"  RealWFA [{feed_name}]: {matched} jobs from {len(items)} items")
         except Exception as e:
-            print(f"  WorkingNomads error [{feed_url}]: {e}")
+            print(f"  RealWFA error [{feed_url}]: {e}")
     return results
+
+
+def fetch_workingnomads(config, domain, phrases):
+    """
+    workingnomads.com — JSON API at /api/exposed_jobs/.
+    Filters client-side by title/description against domain phrases.
+    """
+    import re
+    url = config.get("api_url", "https://www.workingnomads.com/api/exposed_jobs/")
+    tags = config.get("category_tags", {}).get(domain, [])
+    if not tags:
+        tags = phrases
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            jobs = json.loads(r.read())
+        results = []
+        for job in jobs:
+            title   = html.unescape(safe_str(job.get("title", "")))
+            company = html.unescape(safe_str(job.get("company_name", "") or job.get("company", "")))
+            desc    = re.sub(r'<[^>]+>', ' ', safe_str(job.get("description", "")))
+            combined = (title + " " + desc).lower()
+            if not any(t in combined for t in tags):
+                continue
+            # Skip if location-restricted
+            loc = safe_str(job.get("location", "Worldwide"))
+            if not is_location_ok(loc, wfa_strict=True):
+                continue
+            results.append({
+                "title":       title,
+                "company":     company,
+                "salary":      "Not listed",
+                "url":         safe_str(job.get("url", "")),
+                "location":    "Worldwide",
+                "posted":      safe_str(job.get("pub_date", "") or job.get("created_at", ""))[:10],
+                "tags":        safe_str(job.get("tags", "")),
+                "description": desc,
+                "source":      "WorkingNomads"
+            })
+        print(f"  WorkingNomads: {len(results)} matches from {len(jobs)} jobs")
+        return results
+    except Exception as e:
+        print(f"  WorkingNomads error: {e}")
+        return []
 
 
 def fetch_remoteai(config, phrases):
@@ -496,7 +498,7 @@ def fetch_all(domain, phrases, profile_config):
         all_jobs += fetch_himalayas(platforms["himalayas"], phrases)
     # ── v1.3.0 New platforms ──────────────────────────────────────────────
     if platforms.get("realworkfromanywhere", {}).get("enabled"):
-        all_jobs += fetch_realworkfromanywhere(platforms["realworkfromanywhere"], phrases)
+        all_jobs += fetch_realworkfromanywhere(platforms["realworkfromanywhere"], domain, phrases)
     if platforms.get("workingnomads", {}).get("enabled"):
         all_jobs += fetch_workingnomads(platforms["workingnomads"], domain, phrases)
     if platforms.get("remoteai", {}).get("enabled"):

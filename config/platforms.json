@@ -77,31 +77,32 @@
   },
   "realworkfromanywhere": {
     "enabled": true,
-    "base_url": "https://www.realworkfromanywhere.com/rss",
+    "feeds": {
+      "ai-ml": [
+        "https://www.realworkfromanywhere.com/remote-ai-jobs/rss.xml",
+        "https://www.realworkfromanywhere.com/remote-data-jobs/rss.xml"
+      ],
+      "qa-automation": [
+        "https://www.realworkfromanywhere.com/remote-quality-assurance-jobs/rss.xml"
+      ]
+    },
     "note": "Hand-curated WFA-only board. Every listing guarantees no location restriction."
   },
   "workingnomads": {
     "enabled": true,
-    "feeds": {
-      "ai-ml": [
-        "https://www.workingnomads.com/jobs?category=development&format=rss",
-        "https://www.workingnomads.com/jobs?category=data-science&format=rss"
-      ],
-      "qa-automation": [
-        "https://www.workingnomads.com/jobs?category=testing&format=rss",
-        "https://www.workingnomads.com/jobs?category=system-admin&format=rss"
-      ]
+    "api_url": "https://www.workingnomads.com/api/exposed_jobs/",
+    "category_tags": {
+      "ai-ml": ["machine learning", "ai", "data science", "nlp", "llm", "generative", "mlops"],
+      "qa-automation": ["qa", "quality assurance", "test automation", "testing"]
     },
-    "note": "Global remote job board with category RSS feeds. No location restrictions."
+    "note": "Global remote job board with JSON API. No location restrictions."
   },
   "remoteai": {
-    "enabled": true,
-    "base_url": "https://remoteai.io/rss",
-    "note": "Dedicated AI/ML remote job board. All listings are AI/ML roles. Rajkiran only."
+    "enabled": false,
+    "note": "JS-rendered SPA — no RSS or public API available. Disabled."
   },
   "remote100k": {
-    "enabled": true,
-    "base_url": "https://remote100k.com/rss",
-    "note": "Manually vetted $100K+ remote roles only. High signal, low noise."
+    "enabled": false,
+    "note": "Framer SPA — no RSS or public API available. Disabled."
   }
 }
