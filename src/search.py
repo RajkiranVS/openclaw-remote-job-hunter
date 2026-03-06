@@ -23,6 +23,25 @@ def safe_str(val, default=""):
         return ", ".join(str(v) for v in val)
     return str(val)
 
+
+HARD_EXCLUDE_PHRASES = [
+    "must be located in", "must reside in", "us only", "usa only",
+    "united states only", "requires us work authorization",
+    "must be authorized to work in the us", "us citizen",
+    "us permanent resident", "requires security clearance",
+    "us security clearance", "must be in", "onsite", "on-site", "on site",
+    "new york only", "san francisco only", "seattle only",
+    "california only", "texas only"
+]
+
+def is_location_ok(location):
+    if not location:
+        return True
+    loc = location.lower().strip()
+    if any(phrase in loc for phrase in HARD_EXCLUDE_PHRASES):
+        return False
+    return True
+
 def fetch_remotive(config, domain):
     category = config["category_map"].get(domain, domain)
     url = f"{config['base_url']}?category={category}&limit=100"
@@ -64,6 +83,9 @@ def fetch_jobicy(config, domain):
                     if jid in seen_ids:
                         continue
                     seen_ids.add(jid)
+                    job_loc = html.unescape(safe_str(job.get("jobGeo", "")))
+                    if not is_location_ok(job_loc):
+                        continue
                     results.append({
                         "title": html.unescape(safe_str(job.get("jobTitle", ""))),
                         "company": html.unescape(safe_str(job.get("companyName", ""))),
@@ -102,6 +124,9 @@ def fetch_remoteok(config, phrases):
                     sal_min = sal_max = 0
                 salary_str = f"${sal_min//1000}K-${sal_max//1000}K USD" if sal_min and sal_max else \
                              f"${sal_min//1000}K+ USD" if sal_min else "Not listed"
+                job_loc = safe_str(job.get("location", ""))
+                if not is_location_ok(job_loc):
+                    continue
                 results.append({
                     "title": position,
                     "company": html.unescape(safe_str(job.get("company", ""))),
