@@ -83,11 +83,23 @@ def is_title_relevant(title, domain_keywords):
     title_lower = title.lower()
     # Always exclude these regardless of domain
     exclude_titles = [
-        "sales executive", "sales manager", "business development",
-        "account executive", "marketing manager", "game tester",
+        # Sales / Marketing / Finance / Legal / HR
+        "sales executive", "sales manager", "marketing manager",
+        "account executive", "account manager", "business development",
         "finance", "accounting", "legal", "hr ", "recruiter",
         "paid media", "retail", "customer success", "customer service",
-        "site contracts", "bilingual", "controller"
+        "site contracts", "bilingual", "controller", "copywriter",
+        "content writer", "social media", "seo specialist", "brand manager",
+        # Product / Project / Business
+        "product manager", "program manager", "project manager",
+        "business analyst", "scrum master", "agile coach",
+        "operations manager", "technical writer", "documentation",
+        # Entry level / Intern
+        "intern,", "internship", "entry level", "entry-level",
+        "junior ", "graduate ", "trainee", "fresh graduate",
+        "0-2 years", "1-2 years", "no experience",
+        # Other non-engineering
+        "designer", "ux researcher", "data entry", "virtual assistant"
     ]
     if any(ex in title_lower for ex in exclude_titles):
         return False
