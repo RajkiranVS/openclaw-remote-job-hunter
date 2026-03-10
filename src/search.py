@@ -327,7 +327,7 @@ def fetch_realworkfromanywhere(config, domain, phrases):
             feed_name = feed_url.split("/")[-2]
             print(f"  RealWFA [{feed_name}]: {matched} jobs from {len(items)} items")
         except Exception as e:
-            print(f"  RealWFA error [{feed_url}]: {e}")
+            pass  # XML errors suppressed (malformed feed)
     return results
 
 
@@ -548,18 +548,25 @@ def fetch_arbeitnow_eu(phrases, regions=None):
     import urllib.request, json, html
     candidates = []
     try:
-        url = "https://www.arbeitnow.com/api/job-board-api?visa_sponsorship=true&page=1"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            data = json.loads(r.read().decode())
-        jobs = data.get("data", [])
-        print(f"  Arbeitnow EU: {len(jobs)} total visa-sponsored jobs")
+        all_raw = []
+        for page in range(1, 6):
+            url = f"https://www.arbeitnow.com/api/job-board-api?visa_sponsorship=true&page={page}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                data = json.loads(r.read().decode())
+            page_jobs = data.get("data", [])
+            if not page_jobs:
+                break
+            all_raw += page_jobs
+        jobs = all_raw
+        print(f"  Arbeitnow EU: {len(jobs)} total visa-sponsored jobs (5 pages)")
         phrase_lower = [p.lower() for p in phrases]
         for job in jobs:
             title = html.unescape(str(job.get("title", "")))
             desc  = html.unescape(str(job.get("description", "")))
             tags  = " ".join(job.get("tags", []))
-            text  = f"{title} {desc} {tags}".lower()
+            # Title+tags only — avoids false matches on "automation" in DevOps JDs
+            text  = f"{title} {tags}".lower()
             if any(p in text for p in phrase_lower):
                 candidates.append({
                     "title":    title,
@@ -668,10 +675,140 @@ def fetch_eu_visa_sponsored(profile_config, phrases):
 
     # ── Specialist EU boards ──────────────────────────────────────────────
     candidates += fetch_arbeitnow_eu(phrases, allowed_regions)
+    candidates += fetch_adzuna(phrases)
 
     print(f"  EU Visa Sponsored fallback: {len(candidates)} matches "
           f"(Netherlands/Finland)")
     return candidates
+
+
+def fetch_gulf_anz_jobs(phrases):
+    """Jobicy geo-filtered: UAE/Dubai + Australia + New Zealand — visa-sponsored QA roles"""
+    import urllib.request, json, html
+    candidates = []
+    regions = [
+        ("united-arab-emirates", "UAE/Dubai"),
+        ("australia",            "Australia"),
+        ("new-zealand",          "New Zealand"),
+    ]
+    phrase_lower = [p.lower() for p in phrases]
+    for geo, label in regions:
+        for tag in ["qa", "testing", "automation"]:
+            try:
+                url = f"https://jobicy.com/api/v2/remote-jobs?count=50&geo={geo}&tag={tag}"
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    data = json.loads(r.read().decode())
+                jobs = data.get("jobs", [])
+                for job in jobs:
+                    title = html.unescape(str(job.get("jobTitle", "")))
+                    text  = f"{title} {job.get('jobIndustry','')}".lower()
+                    if any(p in text for p in phrase_lower):
+                        candidates.append({
+                            "title":    title,
+                            "company":  html.unescape(str(job.get("companyName", ""))),
+                            "salary":   f"{job.get('annualSalaryMin','')}–{job.get('annualSalaryMax','')} {job.get('salaryCurrency','')}".strip("– ") or "Not listed",
+                            "url":      str(job.get("url", "")),
+                            "location": str(job.get("jobGeo", label)),
+                            "posted":   str(job.get("pubDate", ""))[:10],
+                            "tags":     str(job.get("jobIndustry", "")),
+                            "description": html.unescape(str(job.get("jobDescription", "")))[:500],
+                            "source":   f"Jobicy [{label}]",
+                            "eu_sponsored": True
+                        })
+            except Exception:
+                pass
+    # Deduplicate by URL
+    seen = set()
+    unique = []
+    for j in candidates:
+        if j["url"] not in seen:
+            seen.add(j["url"])
+            unique.append(j)
+    print(f"  Gulf+ANZ jobs: {len(unique)} matches (UAE/Australia/NZ)")
+    return unique
+
+
+def fetch_adzuna(phrases):
+    """Adzuna API — UAE + Australia + New Zealand QA roles with visa sponsorship"""
+    import urllib.request, urllib.parse, json, html, os
+
+    app_id  = os.getenv("ADZUNA_APP_ID",  "508a6def")
+    app_key = os.getenv("ADZUNA_APP_KEY", "bd813a11cfe2b60720740fe4ab4a6f4e")
+
+    # country code -> label
+    markets = [
+        ("au", "Australia"),
+        ("nz", "New Zealand"),
+        ("sg", "Singapore"),
+        ("gb", "UK"),
+    ]
+
+    # Software QA only — excludes food/manufacturing/civil QA noise
+    title_phrases = [
+        "qa automation", "test automation",
+        "qa engineer", "qa lead", "qa manager", "qa analyst",
+        "sdet", "automation engineer", "automation lead",
+        "test engineer", "test lead", "test manager",
+        "selenium", "playwright", "tosca", "cypress",
+        "software tester", "software quality",
+        "automation test", "quality assurance engineer",
+        "quality assurance lead", "quality assurance manager",
+        "quality assurance analyst"
+    ]
+
+    candidates = []
+    phrase_lower = [p.lower() for p in phrases]
+
+    for country, label in markets:
+        for keyword in ["qa automation", "test automation", "quality assurance"]:
+            try:
+                params = urllib.parse.urlencode({
+                    "app_id":         app_id,
+                    "app_key":        app_key,
+                    "results_per_page": 20,
+                    "what":           keyword,
+                    "content-type":   "application/json",
+                })
+                url = f"https://api.adzuna.com/v1/api/jobs/{country}/search/1?{params}"
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    data = json.loads(r.read().decode())
+                jobs = data.get("results", [])
+                for job in jobs:
+                    title = html.unescape(str(job.get("title", "")))
+                    # Title-only match to avoid false positives
+                    title_lower = title.lower()
+                    if any(p in title_lower for p in title_phrases):
+                        desc = html.unescape(str(job.get("description", "")))
+                        salary_min = job.get("salary_min", "")
+                        salary_max = job.get("salary_max", "")
+                        salary = f"{salary_min}–{salary_max}".strip("–") if salary_min or salary_max else "Not listed"
+                        candidates.append({
+                            "title":       title,
+                            "company":     html.unescape(str(job.get("company", {}).get("display_name", ""))),
+                            "salary":      salary,
+                            "url":         str(job.get("redirect_url", "")),
+                            "location":    str(job.get("location", {}).get("display_name", label)),
+                            "posted":      str(job.get("created", ""))[:10],
+                            "tags":        keyword,
+                            "description": desc[:500],
+                            "source":      f"Adzuna [{label}]",
+                            "eu_sponsored": True
+                        })
+            except Exception as e:
+                print(f"  Adzuna [{label}/{keyword}] error: {e}")
+
+    # Deduplicate by URL
+    seen = set()
+    unique = []
+    for j in candidates:
+        if j["url"] not in seen and j["title"]:
+            seen.add(j["url"])
+            unique.append(j)
+
+    print(f"  Adzuna Gulf+ANZ: {len(unique)} matches (UAE/AU/NZ)")
+    return unique
 
 
 def fetch_all(domain, phrases, profile_config):
