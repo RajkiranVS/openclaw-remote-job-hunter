@@ -482,10 +482,203 @@ def fetch_remote100k(config, phrases):
         return []
 
 
+def fetch_indeed_eu(phrases, regions=None):
+    """
+    Indeed Europe RSS feeds for Netherlands and Finland QA jobs.
+    indeed.com provides RSS for job searches.
+    """
+    import re, urllib.parse
+    if regions is None:
+        regions = [
+            ("netherlands", "nl", "Netherlands"),
+            ("finland",     "fi", "Finland"),
+        ]
+    results = []
+    # Core QA search terms for Indeed
+    search_terms = ["qa automation engineer", "test automation engineer", "sdet", "tosca automation"]
+    for term in search_terms[:2]:  # limit to avoid rate limiting
+        for country_key, country_code, country_name in regions:
+            encoded = urllib.parse.quote(term)
+            url = f"https://www.indeed.com/rss?q={encoded}&l={country_name}&radius=100&sort=date"
+            try:
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                })
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    content = r.read().decode("utf-8", errors="replace")
+                root = ET.fromstring(content)
+                items = root.findall(".//item")
+                for item in items:
+                    title_el   = item.find("title")
+                    link_el    = item.find("link")
+                    desc_el    = item.find("description")
+                    pubdate_el = item.find("pubDate")
+                    if title_el is None:
+                        continue
+                    title    = html.unescape(safe_str(title_el.text, ""))
+                    desc_raw = safe_str(desc_el.text if desc_el is not None else "")
+                    desc     = re.sub(r'<[^>]+>', ' ', desc_raw)
+                    combined = (title + " " + desc).lower()
+                    if not any(p in combined for p in phrases):
+                        continue
+                    # Require visa sponsorship signal
+                    visa_signals = ["visa", "sponsor", "relocation", "work permit", "permit"]
+                    if not any(v in combined for v in visa_signals):
+                        continue
+                    results.append({
+                        "title":       html.unescape(title),
+                        "company":     "See listing",
+                        "salary":      "Not listed",
+                        "url":         safe_str(link_el.text if link_el is not None else ""),
+                        "location":    country_name,
+                        "posted":      safe_str(pubdate_el.text if pubdate_el is not None else "")[:16],
+                        "tags":        "visa sponsorship",
+                        "description": desc,
+                        "source":      f"Indeed [{country_name}]",
+                        "eu_sponsored": True
+                    })
+            except Exception as e:
+                print(f"  Indeed EU [{country_name}] error: {e}")
+    print(f"  Indeed EU: {len(results)} visa-sponsored matches")
+    return results
+
+
+def fetch_arbeitnow_eu(phrases, regions=None):
+    """Arbeitnow free API - Europe jobs with visa sponsorship"""
+    import urllib.request, json, html
+    candidates = []
+    try:
+        url = "https://www.arbeitnow.com/api/job-board-api?visa_sponsorship=true&page=1"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read().decode())
+        jobs = data.get("data", [])
+        print(f"  Arbeitnow EU: {len(jobs)} total visa-sponsored jobs")
+        phrase_lower = [p.lower() for p in phrases]
+        for job in jobs:
+            title = html.unescape(str(job.get("title", "")))
+            desc  = html.unescape(str(job.get("description", "")))
+            tags  = " ".join(job.get("tags", []))
+            text  = f"{title} {desc} {tags}".lower()
+            if any(p in text for p in phrase_lower):
+                candidates.append({
+                    "title":    title,
+                    "company":  html.unescape(str(job.get("company_name", ""))),
+                    "salary":   "Not listed",
+                    "url":      str(job.get("url", "")),
+                    "location": str(job.get("location", "Europe (Visa Sponsored)")),
+                    "posted":   str(job.get("created_at", ""))[:10],
+                    "tags":     tags,
+                    "description": desc[:500],
+                    "source":   "Arbeitnow [EU Visa]",
+                    "eu_sponsored": True
+                })
+        print(f"  Arbeitnow EU: {len(candidates)} phrase matches")
+    except Exception as e:
+        print(f"  Arbeitnow EU error: {e}")
+    return candidates
+
+
+def fetch_eu_visa_sponsored(profile_config, phrases):
+    """
+    EU Visa Sponsored fallback — Netherlands/Finland focus.
+    Searches Remotive, Jobicy, WorkingNomads, Indeed EU, Relocate.me, EuropeRemoteJobs.
+    Only triggered when WFA matches are below threshold.
+    """
+    import re
+    eu_config = profile_config.get("eu_fallback", {})
+    if not eu_config.get("enabled"):
+        return []
+
+    allowed_regions = eu_config.get("allowed_regions", [
+        "netherlands", "finland", "amsterdam", "helsinki", "nl", "fi"
+    ])
+
+    platforms = load_platforms()
+    candidates = []
+
+    # ── Remotive ──────────────────────────────────────────────────────────
+    try:
+        remotive_cfg = platforms.get("remotive", {})
+        domain = profile_config.get("domain", "")
+        category = remotive_cfg.get("category_map", {}).get(domain, domain)
+        url = f"{remotive_cfg['base_url']}?category={category}&limit=100"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read())
+            for job in data.get("jobs", []):
+                loc = safe_str(job.get("candidate_required_location", "")).lower()
+                if not any(r in loc for r in allowed_regions):
+                    continue
+                desc  = safe_str(job.get("description", "")).lower()
+                title = safe_str(job.get("title", "")).lower()
+                if not any(p in title + " " + desc for p in phrases):
+                    continue
+                candidates.append({
+                    "title":   html.unescape(safe_str(job.get("title", ""))),
+                    "company": html.unescape(safe_str(job.get("company_name", ""))),
+                    "salary":  safe_str(job.get("salary", "")) or "Not listed",
+                    "url":     safe_str(job.get("url", "")),
+                    "location": safe_str(job.get("candidate_required_location", "")),
+                    "posted":  safe_str(job.get("publication_date", ""))[:10],
+                    "tags":    ", ".join(job.get("tags", [])[:5]),
+                    "description": safe_str(job.get("description", "")),
+                    "source":  "Remotive [EU]",
+                    "eu_sponsored": True
+                })
+    except Exception as e:
+        print(f"  EU Remotive error: {e}")
+
+    # ── Jobicy ────────────────────────────────────────────────────────────
+    try:
+        jobicy_cfg = platforms.get("jobicy", {})
+        tags = jobicy_cfg.get("tag_map", {}).get(profile_config.get("domain", ""), [])
+        seen_ids = set()
+        for tag in tags[:3]:
+            url = f"{jobicy_cfg['base_url']}?count=20&tag={tag}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                data = json.loads(r.read())
+                for job in data.get("jobs", []):
+                    jid = str(job.get("id", ""))
+                    if jid in seen_ids:
+                        continue
+                    seen_ids.add(jid)
+                    loc   = html.unescape(safe_str(job.get("jobGeo", ""))).lower()
+                    if not any(r in loc for r in allowed_regions):
+                        continue
+                    title = html.unescape(safe_str(job.get("jobTitle", ""))).lower()
+                    desc  = html.unescape(safe_str(job.get("jobDescription", ""))).lower()
+                    if not any(p in title + " " + desc for p in phrases):
+                        continue
+                    candidates.append({
+                        "title":   html.unescape(safe_str(job.get("jobTitle", ""))),
+                        "company": html.unescape(safe_str(job.get("companyName", ""))),
+                        "salary":  "Not listed",
+                        "url":     safe_str(job.get("url", "")),
+                        "location": safe_str(job.get("jobGeo", "")),
+                        "posted":  safe_str(job.get("pubDate", ""))[:10],
+                        "tags":    safe_str(job.get("jobIndustry", "")),
+                        "description": html.unescape(safe_str(job.get("jobDescription", ""))),
+                        "source":  "Jobicy [EU]",
+                        "eu_sponsored": True
+                    })
+    except Exception as e:
+        print(f"  EU Jobicy error: {e}")
+
+    # ── Specialist EU boards ──────────────────────────────────────────────
+    candidates += fetch_arbeitnow_eu(phrases, allowed_regions)
+
+    print(f"  EU Visa Sponsored fallback: {len(candidates)} matches "
+          f"(Netherlands/Finland)")
+    return candidates
+
+
 def fetch_all(domain, phrases, profile_config):
     platforms = load_platforms()
     all_jobs = []
-    # ── Existing platforms ────────────────────────────────────────────────
+
+    # ── Primary: WFA platforms ────────────────────────────────────────────
     if platforms.get("remotive", {}).get("enabled"):
         all_jobs += fetch_remotive(platforms["remotive"], domain)
     if platforms.get("jobicy", {}).get("enabled"):
@@ -496,8 +689,7 @@ def fetch_all(domain, phrases, profile_config):
         all_jobs += fetch_wwr(platforms["weworkremotely"], domain, phrases)
     if platforms.get("himalayas", {}).get("enabled"):
         all_jobs += fetch_himalayas(platforms["himalayas"], phrases)
-    # ── v1.3.0 New platforms ──────────────────────────────────────────────
-    if platforms.get("realworkfromanywhere", {}).get("enabled"):
+    if platforms.get("realworkfromanywhere", {}).get("enabled") and profile_config.get("realwfa_enabled", True):
         all_jobs += fetch_realworkfromanywhere(platforms["realworkfromanywhere"], domain, phrases)
     if platforms.get("workingnomads", {}).get("enabled"):
         all_jobs += fetch_workingnomads(platforms["workingnomads"], domain, phrases)
@@ -505,12 +697,28 @@ def fetch_all(domain, phrases, profile_config):
         all_jobs += fetch_remoteai(platforms["remoteai"], phrases)
     if platforms.get("remote100k", {}).get("enabled"):
         all_jobs += fetch_remote100k(platforms["remote100k"], phrases)
-    # ── Deduplicate by URL ────────────────────────────────────────────────
+
+    # ── Deduplicate WFA jobs ──────────────────────────────────────────────
     seen = set()
     unique = []
     for j in all_jobs:
         if j["url"] not in seen and j["title"]:
             seen.add(j["url"])
             unique.append(j)
+
+    # ── EU Fallback: trigger if WFA matches below threshold ───────────────
+    eu_config = profile_config.get("eu_fallback", {})
+    if eu_config.get("enabled"):
+        threshold = eu_config.get("min_wfa_threshold", 8)
+        if len(unique) < threshold:
+            print(f"\n  ⚠️  Only {len(unique)} WFA matches — triggering EU visa-sponsored fallback (threshold: {threshold})")
+            eu_jobs = fetch_eu_visa_sponsored(profile_config, phrases)
+            for j in eu_jobs:
+                if j["url"] not in seen and j["title"]:
+                    seen.add(j["url"])
+                    unique.append(j)
+        else:
+            print(f"\n  ✅ {len(unique)} WFA matches — EU fallback not needed")
+
     print(f"\n  Total unique jobs: {len(unique)}")
     return unique
