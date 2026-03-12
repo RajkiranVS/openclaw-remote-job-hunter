@@ -38,6 +38,21 @@ def _extract_docx(path):
         text = re.sub(r'<[^>]+>', ' ', content).lower()
         # Normalize multiple spaces/newlines to single space
         text = re.sub(r'\s+', ' ', text)
+        # Normalize double spaces from XML splits
+        text = re.sub(r' {2,}', ' ', text)
+        # Expand pipe-separated lists: "functional | regression | api" 
+        # → also emit "functional testing regression testing api testing"
+        # by appending " testing" after each pipe-separated QA term
+        qa_suffixes = ["testing", "test"]
+        import re as _re
+        # Find pipe-lists and expand with common suffixes
+        def expand_pipe_list(m):
+            terms = [t.strip() for t in m.group(0).split("|")]
+            expanded = []
+            for suffix in qa_suffixes:
+                expanded.extend([f"{t} {suffix}" for t in terms if t])
+            return m.group(0) + " " + " ".join(expanded)
+        text = _re.sub(r'[\w\s\-]+(?:\s*\|\s*[\w\s\-]+){2,}', expand_pipe_list, text)
         return text
     except Exception as e:
         print(f"  Resume (.docx) parse error: {e}")
