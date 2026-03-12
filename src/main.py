@@ -47,7 +47,7 @@ def main():
 
     # Score
     print("\nScoring jobs against resume...")
-    scored_jobs, known_skills = score_jobs(jobs, domain, str(resume_path))
+    scored_jobs, known_skills = score_jobs(jobs, domain, str(resume_path), profile_config)
 
     # Apply salary filter
     if salary_filter and salary_min:

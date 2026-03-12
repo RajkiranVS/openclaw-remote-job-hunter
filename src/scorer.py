@@ -78,9 +78,14 @@ def compute_match_score(job_skills, known_skills):
     matches = job_skills & known_skills
     return round(len(matches) / len(job_skills) * 100)
 
-def is_title_relevant(title, domain_keywords):
+def is_title_relevant(title, domain_keywords, exclude_profile_keywords=None):
     """Filter out obviously irrelevant jobs by title."""
     title_lower = title.lower()
+    # Profile-level hard excludes (e.g. devops, fullstack, platform engineer)
+    if exclude_profile_keywords:
+        for kw in exclude_profile_keywords:
+            if kw.lower() in title_lower:
+                return False
     # Always exclude these regardless of domain
     exclude_titles = [
         # Sales / Marketing / Finance / Legal / HR
@@ -105,7 +110,7 @@ def is_title_relevant(title, domain_keywords):
         return False
     return True
 
-def score_jobs(jobs, domain, resume_path):
+def score_jobs(jobs, domain, resume_path, profile=None):
     skill_keywords = load_skill_keywords(domain)
     resume_text = extract_resume_text(resume_path)
 
@@ -122,7 +127,8 @@ def score_jobs(jobs, domain, resume_path):
     # Title relevance filter
     domain_keywords = skill_keywords
     before = len(jobs)
-    jobs = [j for j in jobs if is_title_relevant(j.get("title", ""), domain_keywords)]
+    exclude_profile_keywords = (profile or {}).get("exclude_title_keywords", [])
+    jobs = [j for j in jobs if is_title_relevant(j.get("title", ""), domain_keywords, exclude_profile_keywords)]
     filtered = before - len(jobs)
     if filtered:
         print(f"  Title filter: removed {filtered} irrelevant jobs")
