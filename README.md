@@ -157,23 +157,87 @@ openclaw cron add --agent your-agent --name "Daily Job Search" \
 
 ---
 
-## EU Visa Sponsorship Fallback
+## 🌍 EU Job Search & Visa Sponsorship
 
-When fewer than N work-from-anywhere matches are found (configurable), the pipeline automatically:
-- Queries Arbeitnow for EU visa-sponsored roles
-- Queries Adzuna across AU, NZ, SG, UK markets
-- Merges and deduplicates with the main results
+Built specifically for professionals targeting Europe from outside the EU — India, APAC, LATAM, etc.
 
-Configure in your profile:
+### How it works
+
+The pipeline runs in two stages:
+
+```
+Stage 1 — Global WFA search
+  └── Remotive, RemoteOK, Jobicy, WeWorkRemotely, Himalayas, WorkingNomads
+  └── Scores and ranks all matches
+
+Stage 2 — EU Fallback (auto-triggered when Stage 1 < threshold)
+  └── Arbeitnow  →  EU visa-sponsored roles across all of Europe
+  └── Adzuna     →  AU, NZ, SG, UK markets (English-language, easy to apply)
+  └── Merged, deduplicated, scored against your resume
+```
+
+Stage 2 fires **automatically** — you don't have to do anything. If your target market has thin supply that day, the pipeline widens the net without you noticing.
+
+### Enabling EU fallback
+
+Add this to your profile JSON:
 
 ```json
 "eu_fallback": {
   "enabled": true,
   "min_wfa_threshold": 15,
-  "allowed_regions": ["netherlands", "germany", "ireland", "finland", ...],
-  "require_visa_sponsorship": true
+  "allowed_regions": [
+    "netherlands", "germany", "ireland", "sweden", "finland",
+    "denmark", "norway", "portugal", "spain", "france",
+    "amsterdam", "berlin", "dublin", "stockholm", "helsinki",
+    "nl", "de", "ie", "se", "fi", "dk", "no", "pt", "es", "fr",
+    "europe", "eu", "european"
+  ],
+  "require_visa_sponsorship": true,
+  "label": "EU Visa Sponsored"
 }
 ```
+
+### Targeting specific countries
+
+Narrow `allowed_regions` to your target countries:
+
+```json
+// Germany + Netherlands only
+"allowed_regions": ["germany", "netherlands", "berlin", "amsterdam", "de", "nl"]
+
+// Ireland + Portugal (English-friendly, popular for tech)
+"allowed_regions": ["ireland", "portugal", "dublin", "lisbon", "ie", "pt"]
+
+// Nordics
+"allowed_regions": ["sweden", "finland", "norway", "denmark", "se", "fi", "no", "dk"]
+```
+
+### What `min_wfa_threshold` means
+
+| Value | Behaviour |
+|---|---|
+| `5` | Only triggers EU fallback when fewer than 5 global WFA jobs found |
+| `15` (recommended) | Always triggers — ensures Adzuna AU/NZ/SG/UK always runs |
+| `50` | Effectively always-on regardless of WFA supply |
+
+Set to `15` or higher if you want Adzuna markets included every day.
+
+### Visa sponsorship reality check
+
+- **Arbeitnow** — filters for `visa_sponsorship=true` at the API level. Supply is genuinely thin (~10–50 jobs/day across all of Europe). Quality over quantity.
+- **Adzuna AU/NZ/SG** — no visa filter, but these markets have high English-language QA/AI/ML demand and straightforward work visa pathways compared to EU.
+- **Adzuna UK** — post-Brexit, UK has its own Skilled Worker visa. Strong tech market, no EU freedom of movement required.
+
+### Job boards by region
+
+| Board | Region | Visa filter | Notes |
+|---|---|---|---|
+| Arbeitnow | All EU | ✅ Yes | Best for EU visa-sponsored roles |
+| Adzuna | AU, NZ, SG, UK | ❌ No | High volume, English-language |
+| Remotive | Global WFA | ❌ No | Strong for fully remote |
+| Jobicy | Global WFA | ❌ No | Good EU coverage |
+| WeWorkRemotely | Global WFA | ❌ No | High quality listings |
 
 ---
 
